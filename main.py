@@ -26,7 +26,6 @@ with open('info.json','r') as f:
             st.rerun()
 
     user = cookies.get('finance-user')
-    st.write(user)
     if user:
         if user not in data:
             updates = True
