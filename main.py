@@ -15,10 +15,6 @@ st.set_page_config(
 updates = False
 cookies = CookieController()
 
-try:
-    cookies.refresh()
-except Exception as e:
-    time.sleep(1)
 
 with open('info.json','r') as f:
     data = json.load(f)
@@ -29,7 +25,10 @@ with open('info.json','r') as f:
         x = st.selectbox(label='Enter you Name : ',options=['Ritam','Riya'],index=None)
         if x:
             cookies.set('finance-user',x)
-            st.rerun()
+            try:
+                cookies.refresh()
+            except Exception as e:
+                time.sleep(1)
 
     user = cookies.get('finance-user')
     if user:
