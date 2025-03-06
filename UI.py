@@ -212,7 +212,7 @@ def save_df(df, changes):
         # st.write(update_json)
 
         # res = requests.post("http://127.0.0.1:5000/update-records",json=update_json)
-        res = requests.post("https://finance---api.vercel.app/update-records",json=update_json)
+        res = requests.post("https://finance---api.vercel.app/update-records",json=update_json, headers={'USER',USER})
         if res.status_code == 200:
             st.session_state['DF_UPDATES'] = None
             with open('info.json', 'w') as outfile:
@@ -222,7 +222,7 @@ def set_cookies(key, value):
     cookies.set(key,value)
 
 def generate_basic_ui(user, paymentInfo):
-
+    USER = user
     if 'TAGS_EDITABLE' not in st.session_state:
         st.session_state['TAGS_EDITABLE'] = False
     if 'DF_UPDATES' not in st.session_state:
@@ -243,8 +243,10 @@ def generate_basic_ui(user, paymentInfo):
         for acc in paymentInfo[bank]:
             for key in paymentInfo[bank][acc]:
                 trans = paymentInfo[bank][acc][key]
-                data.append((key, f"{bank} ({trans['account']})", trans['time'], trans['to_from'], trans['amount'],trans['mode'], trans['type'], [] if 'tags' not in trans else trans['tags']))
-
+                try:
+                    data.append((key, f"{bank} ({trans['account']})", trans['time'], trans['to_from'], trans['amount'],trans['mode'], trans['type'], [] if 'tags' not in trans else trans['tags']))
+                except:
+                    st.write(trans)
     with tabs[0]:
         df = pd.DataFrame(data,columns=DF_COLUMNS)
         cols = st.columns([0.75,0.25],gap="large")
