@@ -11,7 +11,7 @@ from datetime import timedelta, datetime,date
 
 from main import cookies
 
-USER = cookies.get('finance-user')
+# USER = cookies.get('finance-user')
 TAB_LIST = ['Monthly Summary','Detailed Summary']
 MONTH_LIST = []
 CURR_TIME = datetime.now()

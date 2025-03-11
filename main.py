@@ -33,6 +33,7 @@ with open('info.json','r') as f:
 
             if requests.get(f"{URL}/auth",headers={'Username' : x,'Password':y}).status_code == 200:
                 cookies.set('finance-user',x)
+                st.rerun()
             else:
                 st.error('Please enter correct key!')
 
