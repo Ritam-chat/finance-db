@@ -212,7 +212,7 @@ def save_df(df, changes):
         # st.write(update_json)
 
         # res = requests.post("http://127.0.0.1:5000/update-records",json=update_json)
-        res = requests.post("https://finance---api.vercel.app/update-records",json=update_json, headers={'USER',USER})
+        res = requests.post("https://finance---api.vercel.app/update-records",json=update_json, headers={'USER':USER})
         if res.status_code == 200:
             st.session_state['DF_UPDATES'] = None
             with open('info.json', 'w') as outfile:
