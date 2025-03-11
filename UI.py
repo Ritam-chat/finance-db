@@ -11,7 +11,7 @@ from datetime import timedelta, datetime,date
 
 from main import cookies
 
-USER = 'Ritam'
+USER = cookies.get('finance-user')
 TAB_LIST = ['Monthly Summary','Detailed Summary']
 MONTH_LIST = []
 CURR_TIME = datetime.now()
@@ -209,20 +209,24 @@ def save_df(df, changes):
                 update_json[path]['tags'].pop()
                 update_json[path]['tags'].pop()
 
-        # st.write(update_json)
 
         # res = requests.post("http://127.0.0.1:5000/update-records",json=update_json)
-        res = requests.post("https://finance---api.vercel.app/update-records",json=update_json, headers={'USER':USER})
+        res = requests.post("https://finance---api.vercel.app/update-records",json=update_json, headers={'USER':st.session_state['USER']})
         if res.status_code == 200:
             st.session_state['DF_UPDATES'] = None
-            with open('info.json', 'w') as outfile:
-                json.dump({}, outfile)
+            with open('info.json','r') as f:
+                data = json.load(f)
+            with open('info.json', 'w') as f:
+                data[st.session_state['USER']] = {}
+                json.dump({}, f)
 
 def set_cookies(key, value):
     cookies.set(key,value)
 
 def generate_basic_ui(user, paymentInfo):
-    USER = user
+
+    st.session_state['USER'] = user
+
     if 'TAGS_EDITABLE' not in st.session_state:
         st.session_state['TAGS_EDITABLE'] = False
     if 'DF_UPDATES' not in st.session_state:
