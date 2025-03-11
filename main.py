@@ -15,6 +15,9 @@ st.set_page_config(
 
 updates = False
 cookies = CookieController()
+
+st.write(st.session_state)
+
 with open('info.json','r') as f:
     data = json.load(f)
     # URL = "https://python-api-finance-dashboards.onrender.com/records?uname=ritariya&key=210102"
