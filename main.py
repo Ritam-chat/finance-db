@@ -1,17 +1,22 @@
-import streamlit
+import requests
 
-from UI import *
+from UI_2 import *
 import json
 import time
 
-# Selected Sum
-# Credit period filters
-from streamlit_cookies_controller import CookieController
+
 
 st.set_page_config(
     page_title="Data Explorer",
     layout="wide"
 )
+
+
+# Selected Sum
+# Credit period filters
+from streamlit_cookies_controller import CookieController
+
+
 
 updates = False
 cookies = CookieController()

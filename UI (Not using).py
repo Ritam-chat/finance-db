@@ -84,6 +84,27 @@ def check_split(xdf,changes):
         st.session_state['DF_UPDATES'] = ndf
     # st.session_state['DF_UPDATES'].reindex('Key')
 
+def new_trans():
+    dt = datetime.now()
+    row = {
+        'Key': [str(dt.replace(minute=dt.minute + 1 if dt.minute < 55 else 56, second=np.random.randint(0, 60)))],
+        'Account': ['XXXX (XXXX)'],
+        'Date': ['X'],
+        'From/To': ['X'],
+        'Amount': [0],
+        'Mode': [''],
+        'Type': ['Debit'],
+        'Tags': [[]],
+    }
+
+    ndf = pd.DataFrame(row).set_index('Key')
+
+    if st.session_state['DF_UPDATES'] is not None:
+        st.session_state['DF_UPDATES'] = st.session_state['DF_UPDATES'].combine_first(ndf)
+    else:
+        st.session_state['DF_UPDATES'] = ndf
+
+
 def validate_df_changes(df,changes):
     if df.compare(changes).shape[0] > 0:
         print("Triggered")
@@ -158,10 +179,12 @@ def merge_dues(src_key, tgt_key, crrnt_key, changes):
     changes.drop('Split',axis=1, inplace=True)
 
     tgt_df = changes[changes['Key'] == tgt_key]
-    crrnt_df = changes[changes['Key'] == crrnt_key]
+    crrnt_df = changes[changes['Key'] in crrnt_key]
 
-    tgt_df['Tags'] = tgt_df['Tags'] + f' , Due {crrnt_df["Amount"].to_list()[0]} cleared for Record {src_key}'
-    crrnt_df['Tags'] = crrnt_df['Tags'] + f' , Deleted'
+
+    tgt_df['Tags'] = tgt_df['Tags'] + f' , Due {sum(crrnt_df["Amount"].to_list())} cleared for Record {src_key}'
+
+    crrnt_df['Tags'] += f' , Deleted'
 
 
     if st.session_state['DF_UPDATES'] is None:
@@ -172,7 +195,6 @@ def merge_dues(src_key, tgt_key, crrnt_key, changes):
     st.session_state['DF_UPDATES'] = st.session_state['DF_UPDATES'].set_index('Key')
 
     st.session_state['DF_UPDATES']['Tags'] = st.session_state['DF_UPDATES']['Tags'].apply(lambda x: x.split(' , '))
-
 
 def save_df(df, changes):
 
@@ -230,11 +252,10 @@ def generate_basic_ui(user, paymentInfo):
     if 'TAGS_EDITABLE' not in st.session_state:
         st.session_state['TAGS_EDITABLE'] = False
     if 'DF_UPDATES' not in st.session_state:
-            st.session_state['DF_UPDATES'] = None
+        st.session_state['DF_UPDATES'] = None
 
     st.session_state['TAGS_EDITABLE'] = st.session_state['TAGS_EDITABLE'] if 'Edit_BTN' not in st.session_state else st.session_state['Edit_BTN']
     hd_cols = st.columns([1,0.1])
-
     with hd_cols[0]:
         st.header(f"Hello, {user}")
     with hd_cols[1]:
@@ -251,6 +272,8 @@ def generate_basic_ui(user, paymentInfo):
                     data.append((key, f"{bank} ({trans['account']})", trans['time'], trans['to_from'], trans['amount'],trans['mode'], trans['type'], [] if 'tags' not in trans else trans['tags']))
                 except:
                     st.write(trans)
+
+
     with tabs[0]:
         df = pd.DataFrame(data,columns=DF_COLUMNS)
         cols = st.columns([0.75,0.25],gap="large")
@@ -279,18 +302,19 @@ def generate_basic_ui(user, paymentInfo):
         with nav_cols[0]:
 
             selectedMonth = st.date_input(label="Date",label_visibility='collapsed',value=(MONTH_LIST[0].replace(day=1),MONTH_LIST[0]),min_value=MONTH_LIST[-1].replace(day=1),max_value=MONTH_LIST[0])
-            # selectedMonth = st.selectbox("month", [f"1 - {month.strftime('%d %b %Y')}" for month in MONTH_LIST],
-            #                              label_visibility='collapsed')
-
-            startMonth, endMonth = selectedMonth[0], selectedMonth[1]
+            try:
+                startMonth, endMonth = selectedMonth[0], selectedMonth[1]
+            except:
+                startMonth, endMonth = selectedMonth[0], MONTH_LIST[0]
 
         # Filter DF based on Selected Date
         df['Key'] = pd.to_datetime(df['Key'])
         df = df.where(df['Key'].dt.date <= endMonth).where(
             df['Key'].dt.date >= startMonth).dropna().sort_values('Key')
         df['Key'] = df['Key'].apply(str)
-
+        # Set Key as index
         df = df.set_index('Key')
+
 
         # If any unsaved-changes are in Session, merge them with old data
         if st.session_state['DF_UPDATES'] is not None:
@@ -398,6 +422,9 @@ def generate_basic_ui(user, paymentInfo):
                 selected = selected.reset_index()
                 selected = selected.to_dict()
                 showMerge, tgt_key, crrnt_key = False, None, None
+
+                # Check if one credit, and all others are future-credit
+
                 for x in selected['Key']:
                     key = selected['Key'][x]
                     if 'Split' in selected['Tags'][x] and len(selected['Key']) == 2:
@@ -413,6 +440,8 @@ def generate_basic_ui(user, paymentInfo):
                     elif selected['Type'][x] == 'Credit' and len(selected['Key']) == 2:
                         tgt_key = key
 
+
+
                 if showMerge and tgt_key and crrnt_key:
                     merge_shown = True
                     st.button('Merge Dues', key='merge_BTN', use_container_width=True,
@@ -420,6 +449,9 @@ def generate_basic_ui(user, paymentInfo):
 
             if not merge_shown and st.session_state['TAGS_EDITABLE'] and (True in ([False] if 'Split' not in changes.columns else changes['Split'].to_list())):
                 st.button('Split Selected Transactions', key='Split_BTN',use_container_width=True,on_click=check_split,args=(df,changes))
+
+            st.button('New Trans', key='New_BTN', use_container_width=True, on_click=new_trans,
+                      )
 
         with cols[1]:
 
