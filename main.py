@@ -5,7 +5,6 @@ import json
 import time
 
 
-
 st.set_page_config(
     page_title="Data Explorer",
     layout="wide"
@@ -19,6 +18,8 @@ from streamlit_cookies_controller import CookieController
 
 
 updates = False
+
+
 cookies = CookieController()
 
 if cookies.getAll() == {}:

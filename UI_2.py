@@ -245,9 +245,33 @@ def generate_detailed_ui(data,more):
 
         with nav_cols[5]:
             if st.session_state['TAGS_EDITABLE']:
-                st.button('New Trans', key='New_BTN', use_container_width=True, on_click=new_trans,
-                          )
+                with st.popover('New Transaction', use_container_width=True):
+                    t_acc = st.selectbox('Account of Transaction',options=list(
+            set([x for x in df['Account'].to_list()])),index=None)
+                    t_date = st.date_input('Date of Transaction', format="YYYY-MM-DD",value='today')
+                    t_from_to = st.text_input('Transaction User : ')
+                    t_amount = st.number_input('Amount : ', max_value=10000)
+                    t_mode = st.selectbox('Mode : ', options=['UPI','VPA','Split','Bank','NEFT','Withdrawal','Repayment','Card','Transaction','Refund'])
+                    t_type = st.selectbox('Type : ', options=['Debit','Credit','FutureCredit'])
 
+                    now = datetime.now()
+                    now.replace(month=t_date.month, year = t_date.year, day = t_date.day)
+
+                    enable = t_acc is not None and t_date is not None and t_from_to is not None and t_from_to != '' and t_amount is not None and t_amount != 0 and t_mode is not None and t_type is not None
+                    if st.button('Create', disabled= not enable, use_container_width=True):
+                        data = {
+                            'Key': [now.strftime('%Y-%m-%d %H:%M:%S')],
+                            'Account': [t_acc],
+                            'Date': [now.strftime("%d-%b, %I:%M %p")],
+                            'From/To': [t_from_to],
+                            'Amount': [t_amount],
+                            'Mode': [t_mode],
+                            'Type': [t_type],
+                            'Tags': [['New Trans']],
+                        }
+                        new_trans(data)
+                        st.toast('New Transaction Added!')
+                        st.rerun()
 
         if more and st.session_state['TAGS_EDITABLE']:
             with more_cols[6]:
@@ -260,9 +284,57 @@ def generate_detailed_ui(data,more):
             with more_cols[5]:
                 if st.session_state['TAGS_EDITABLE'] and (
                             True in ([False] if 'Split' not in changes.columns else changes['Split'].to_list())):
-                    st.button('Split Transactions', key='Split_BTN', use_container_width=True, on_click=check_split,
-                          args=(df, changes))
+                    with st.popover('Split Transactions', use_container_width=True):
+                        split_config = {}
+                        enable = True
+                        quantity = st.slider('How many splits you want ?', min_value=2, max_value=10)
+                        s_type = st.selectbox('Split Type', options=['Equally', 'Percentage', 'Manual'])
 
+                        split_config['quantity'] = quantity
+                        split_config['type'] = s_type
+
+                        if s_type == 'Percentage':
+                            split_config['splits'] = []
+                            total_dn = 0
+                            for x in range(quantity):
+                                if x != 0:
+                                    us = st.text_input(f'User for Split {x} : ')
+                                else:
+                                    us = st.session_state['USER']
+                                am = st.number_input(f'Percentage for Split {x} : ' if x != 0 else 'Your Split Percentage : ', max_value=100, min_value=0)
+                                enable = enable and (us.strip() != '')
+                                total_dn += am
+                                split_config['splits'].append({'user':us,'amount':am})
+                            if total_dn != 100:
+                                st.warning('Total Percentage should be 100')
+                                enable = False
+                        elif s_type == 'Manual':
+                            split_config['splits'] = []
+                            total_dn = 0
+                            for x in range(quantity):
+                                if x != 0:
+                                    us = st.text_input(f'User for Split {x} : ')
+                                else:
+                                    us = st.session_state['USER']
+                                am = st.number_input(
+                                    f'Amount for Split {x} : ' if x != 0 else 'Your Split Amount : ',
+                                    min_value=0)
+                                total_dn += am
+                                enable = enable and (us.strip() != '')
+                                split_config['splits'].append({'user':us,'amount':am})
+                        elif s_type == 'Equally':
+                            split_config['splits'] = []
+                            for x in range(quantity):
+                                if x != 0:
+                                    us = st.text_input(f'User for Split {x+1} : ')
+                                else:
+                                    us = st.text_input(f'User for Split {x+1} : ',value=st.session_state['USER'], disabled=True)
+                                enable = enable and (us.strip() != '')
+                                split_config['splits'].append({'user':us})
+                        if st.button('Split',disabled= not enable, use_container_width=True):
+                            check_split(df, changes, split_config)
+                            st.toast('Split Successful!')
+                            st.rerun()
 
         # Filter DF based on Ignore Tags
         dct, lst = df['Tags'].to_dict(), []

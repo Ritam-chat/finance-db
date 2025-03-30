@@ -5,8 +5,10 @@ import numpy as np
 import pandas as pd
 import requests
 
-from main import cookies
 import streamlit as st
+from streamlit_cookies_controller import CookieController
+
+cookies = CookieController()
 
 def to_float(lst):
     ls = []
@@ -22,7 +24,7 @@ def set_cookies(key, value):
     cookies.set(key,value)
 
 def split_str(t):
-    return [x for x in t.split(',') if x.strip() != '']
+    return [x.strip() for x in t.split(',') if x.strip() != '']
 
 def filter_date(o_data, filtered_keys):
     for x in o_data:
@@ -65,7 +67,7 @@ def merge_dues(fc_index, c_index, changes):
             else:
                 uncleared.append(x)
         else:
-            df['Tags'][x].append(f'Due {got_due} cleared for : {fc_index-uncleared}')
+            df['Tags'][x].append(f'Due {got_due} cleared for : {list(set(fc_index) - set(uncleared))}')
 
     if len(uncleared):
         st.warning(f'Unable to clear for Amount : {total_got}, all Dues : {uncleared}')
@@ -91,45 +93,54 @@ def concat_datas(o_data, n_data):
 def get_different_from_df(df, changes):
     return changes[~df.apply(tuple, 1).isin(changes.apply(tuple, 1))]
 
-def check_split(xdf,changes, c=1):
+def check_split(xdf,changes, config):
     df = changes.where(changes['Split'] == True).dropna()
     split_source_dict = df.to_dict()
     validate_df_changes(xdf,changes)
     ndf = {'Account':{},'Date':{},'From/To':{},'Amount':{},'Mode':{},'Type':{},'Tags':{}}
     for s_key in split_source_dict['Amount']:
-        count = c
-        while count:
+        for indx in range(config['quantity']):
             dt = datetime.strptime(s_key,"%Y-%m-%d %H:%M:%S")
             acc = split_source_dict['Account'][s_key]
             tags = split_source_dict['Tags'][s_key]
-            key = str(dt.replace(minute=dt.minute - (1*count) if dt.minute > 5 else 3,second=np.random.randint(0,60)))
-            while key in ndf['Account']:
-                key = str(
-                    dt.replace(minute=dt.minute - (1 * count) if dt.minute > 5 else 3, second=np.random.randint(0, 60)))
+
+            if indx == 0:
+                key = s_key
+                frm_to = split_source_dict['From/To'][s_key]
+            else:
+                key = str(dt.replace(minute=dt.minute - (1*indx) if dt.minute > 5 else 3,second=np.random.randint(0,60)))
+                while key in ndf['Account']:
+                    key = str(
+                        dt.replace(minute=dt.minute - (1 * indx) if dt.minute > 5 else 3, second=np.random.randint(0, 60)))
+                frm_to = config['splits'][indx]['user']
+
+            amount = 0
+            if config['type'] == 'Percentage':
+                amount = round((config['splits'][indx]['amount'] * split_source_dict['Amount'][s_key]) / 100,2)
+            elif config['type'] == 'Manual':
+                amount = config['splits'][indx]['amount']
+            elif config['type'] == 'Equally':
+                amount = round(split_source_dict['Amount'][s_key] / config['quantity'],2)
 
             ndf['Account'][key] = acc
             ndf['Date'][key] = datetime.strptime(key,"%Y-%m-%d %H:%M:%S").strftime("%d-%b, %I:%M %p")
-            ndf['From/To'][key] = 'X'
-            ndf['Amount'][key] = 0
-            ndf['Mode'][key] = 'Split'
-            ndf['Type'][key] = 'FutureCredit'
-            ndf['Tags'][key] = split_str(tags) + ['Split','New Split',s_key]
-            count -= 1
-
-
+            ndf['Amount'][key] = amount
+            ndf['From/To'][key] = frm_to
+            ndf['Mode'][key] = 'Split' if indx != 0 else split_source_dict['Mode'][s_key]
+            ndf['Type'][key] = 'FutureCredit' if indx != 0 else split_source_dict['Type'][s_key]
+            ndf['Tags'][key] = split_str(tags) + (['Split','New Split',s_key] if indx != 0 else [])
+            st.write(ndf['Tags'][key])
     ndf = pd.DataFrame(ndf)
 
     if st.session_state['DF_UPDATES'] is not None:
-        st.session_state['DF_UPDATES'] = st.session_state['DF_UPDATES'].combine_first(ndf)
+        st.session_state['DF_UPDATES'] = ndf.combine_first(st.session_state['DF_UPDATES'])
     else:
         st.session_state['DF_UPDATES'] = ndf
 
-    st.write(st.session_state['DF_UPDATES'])
+    # st.write(st.session_state['DF_UPDATES'])
 
 def validate_df_changes(df,changes):
     if df.compare(changes).shape[0] > 0:
-        st.write('Updating changes!')
-        st.write(df.compare(changes))
         df['Tags'] = df['Tags'].apply(split_str)
         changes['Tags'] = changes['Tags'].apply(split_str)
 
@@ -159,13 +170,12 @@ def update_split_data(changes):
         for index in df_dct['Account']:
             for tag in df_dct['Tags'][index]:
                 if tag in split_source['Amount']:
-                    split_source['Amount'][tag] -= df_dct['Amount'][index]
+                    # split_source['Amount'][tag] -= df_dct['Amount'][index]
                     split_source['Tags'][tag].append(f'Split : {df_dct["Amount"][index]}')
                     break
         st.session_state['DF_UPDATES'] = pd.DataFrame(split_source).dropna()
 
 def save_df(df, changes):
-    st.session_state['TAGS_EDITABLE'] = False
     validate_df_changes(df, changes)
     update_split_data(changes)
     # st.write(st.session_state['DF_UPDATES'])
@@ -187,7 +197,7 @@ def save_df(df, changes):
             update_json[path] = {
                     'type': json_df['Type'][index],
                     'mode': json_df['Mode'][index],
-                    'tags': [i for i in json_df['Tags'][index] if i.strip() != ''],
+                    'tags': [i.strip() for i in json_df['Tags'][index] if i.strip() != ''],
                     'to_from': json_df['From/To'][index],
                     'amount': json_df['Amount'][index]
                 }
@@ -217,13 +227,14 @@ def save_df(df, changes):
                     update_json.pop(path)
                 else:
                     ind = update_json[path]['tags'].index('New Trans')
-                    if ind:
+                    if ind is not None:
                         update_json[path]['tags'].pop(ind)
 
-
-        # # res = requests.post("http://127.0.0.1:5000/update-records",json=update_json)
+        st.write(update_json)
+        # res = requests.post("http://127.0.0.1:5000/update-records",json=update_json)
         res = requests.post("https://finance---api.vercel.app/update-records",json=update_json, headers={'USER':st.session_state['USER']})
         if res.status_code == 200:
+            st.session_state['TAGS_EDITABLE'] = False
             st.session_state['DF_UPDATES'] = None
             with open('info.json','r') as f:
                 data = json.load(f)
@@ -264,21 +275,8 @@ def save_memo():
 
     return False
 
-def new_trans():
-    dt = datetime.now()
-    row = {
-        'Key': [dt.strftime('%Y-%m-%d %H:%M:%S')],
-        'Account': ['XXXX (XXXX)'],
-        'Date': ['X'],
-        'From/To': ['X'],
-        'Amount': [0],
-        'Mode': [''],
-        'Type': ['Debit'],
-        'Tags': [['New Trans']],
-    }
-
+def new_trans(row):
     ndf = pd.DataFrame(row).set_index('Key')
-
     if st.session_state['DF_UPDATES'] is not None:
         st.session_state['DF_UPDATES'] = st.session_state['DF_UPDATES'].combine_first(ndf)
     else:
