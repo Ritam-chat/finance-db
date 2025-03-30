@@ -129,7 +129,7 @@ def check_split(xdf,changes, config):
             ndf['Mode'][key] = 'Split' if indx != 0 else split_source_dict['Mode'][s_key]
             ndf['Type'][key] = 'FutureCredit' if indx != 0 else split_source_dict['Type'][s_key]
             ndf['Tags'][key] = split_str(tags) + (['Split','New Split',s_key] if indx != 0 else [])
-            st.write(ndf['Tags'][key])
+
     ndf = pd.DataFrame(ndf)
 
     if st.session_state['DF_UPDATES'] is not None:
@@ -230,7 +230,7 @@ def save_df(df, changes):
                     if ind is not None:
                         update_json[path]['tags'].pop(ind)
 
-        st.write(update_json)
+        # st.write(update_json)
         # res = requests.post("http://127.0.0.1:5000/update-records",json=update_json)
         res = requests.post("https://finance---api.vercel.app/update-records",json=update_json, headers={'USER':st.session_state['USER']})
         if res.status_code == 200:
