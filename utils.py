@@ -258,7 +258,7 @@ def save_df(df, changes):
 
 
 def save_memo():
-    if 'MEMO_KEY' in st.session_state:
+    if 'MEMO_KEY' in st.session_state and 'memo' in st.session_state:
         text = st.session_state['memo']
         key = st.session_state['MEMO_KEY']
 
