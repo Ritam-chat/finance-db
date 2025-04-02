@@ -175,7 +175,7 @@ def generate_detailed_ui(data,more):
 
         # Final Filters
 
-        df = df.sort_values(axis=0, by='Date', ascending=False)
+        df = df.sort_index(ascending=False)
 
         changes = st.data_editor(df,
                                  key='DETAILED_EDITOR',
