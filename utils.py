@@ -61,7 +61,7 @@ def merge_dues(fc_index, c_index, changes):
     got_due = total_due - total_got
     for x in df['Account']:
         if x in fc_index:
-            if total_got - df['Amount'][x] > 0:
+            if total_got - df['Amount'][x] >= 0:
                 df['Tags'][x].append('Cleared')
                 total_got -= df['Amount'][x]
             else:
