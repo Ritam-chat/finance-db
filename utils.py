@@ -6,9 +6,26 @@ import pandas as pd
 import requests
 
 import streamlit as st
+from streamlit.runtime.metrics_util import gather_metrics
 from streamlit_cookies_controller import CookieController
 
 cookies = CookieController()
+
+@st.dialog('Are You Sure?')
+def show_dialog(due):
+    st.write(f'Mismatch of {due} found!')
+    col = st.columns([1,1])
+    with col[0]:
+        btn = st.button('Yes go ahead!')
+        if btn:
+            st.session_state['DO_NOT_OPEN_POPUP'] = True
+            st.rerun()
+    with col[1]:
+        btn = st.button('No Cancel!')
+        if btn:
+            st.rerun()
+
+
 
 def to_float(lst):
     ls = []
@@ -59,25 +76,33 @@ def merge_dues(fc_index, c_index, changes):
             total_got += df['Amount'][x]
     uncleared = []
     got_due = total_due - total_got
-    for x in df['Account']:
-        if x in fc_index:
-            if total_got - df['Amount'][x] >= 0:
-                df['Tags'][x].append('Cleared')
-                total_got -= df['Amount'][x]
-            else:
-                uncleared.append(x)
-        else:
-            df['Tags'][x].append(f'Due {got_due} cleared for : {list(set(fc_index) - set(uncleared))}')
-
-    if len(uncleared):
-        st.warning(f'Unable to clear for Amount : {total_got}, all Dues : {uncleared}')
-
-    if st.session_state['DF_UPDATES'] is not None:
-        updates = st.session_state['DF_UPDATES'].to_dict()
-        updates = concat_datas(updates, df)
-        st.session_state['DF_UPDATES'] = pd.DataFrame(updates).dropna()
+    if got_due != 0 and 'DO_NOT_OPEN_POPUP' not in st.session_state:
+        show_dialog(got_due)
     else:
-        st.session_state['DF_UPDATES'] = pd.DataFrame(df).dropna()
+        st.session_state['DO_NOT_OPEN_POPUP'] = True
+
+    if 'DO_NOT_OPEN_POPUP' in st.session_state:
+        st.session_state.pop('DO_NOT_OPEN_POPUP')
+        for x in df['Account']:
+            if x in fc_index:
+                if total_got - df['Amount'][x] >= 0:
+                    df['Tags'][x].append('Cleared')
+                    total_got -= df['Amount'][x]
+                else:
+                    uncleared.append(x)
+            else:
+
+                df['Tags'][x].append(f'Due {total_due} cleared for : {list(set(fc_index) - set(uncleared))}')
+
+        if len(uncleared):
+            st.warning(f'Unable to clear for Amount : {total_got}, all Dues : {uncleared}')
+
+        if st.session_state['DF_UPDATES'] is not None:
+            updates = st.session_state['DF_UPDATES'].to_dict()
+            updates = concat_datas(updates, df)
+            st.session_state['DF_UPDATES'] = pd.DataFrame(updates).dropna()
+        else:
+            st.session_state['DF_UPDATES'] = pd.DataFrame(df).dropna()
 
 
 def concat_datas(o_data, n_data):
@@ -217,7 +242,7 @@ def save_df(df, changes):
                 update_json[path]['accountType'] = json_df['Type'][index]
                 update_json[path]['time'] = json_df['Date'][index]
                 update_json[path]['refNo'] = ''
-                update_json[path]['account'] = json_df['Account'][index]
+                update_json[path]['account'] = json_df['Account'][index].split(' ')[1].replace("(","").replace(")",'')
                 update_json[path]['gps'] = ''
 
                 if (update_json[path]['account'] == 'XXXX (XXXX)' or

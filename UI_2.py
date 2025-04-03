@@ -259,6 +259,7 @@ def generate_detailed_ui(data,more):
 
                     enable = t_acc is not None and t_date is not None and t_from_to is not None and t_from_to != '' and t_amount is not None and t_amount != 0 and t_mode is not None and t_type is not None
                     if st.button('Create', disabled= not enable, use_container_width=True):
+
                         data = {
                             'Key': [now.strftime('%Y-%m-%d %H:%M:%S')],
                             'Account': [t_acc],
@@ -339,7 +340,7 @@ def generate_detailed_ui(data,more):
         # Filter DF based on Ignore Tags
         dct, lst = df['Tags'].to_dict(), []
         for x in dct:
-            if 'Ignore' not in dct[x]:
+            if 'Ignore' not in dct[x] and 'Cleared' not in dct[x]:
                 lst.append(x)
         df = df.loc[lst]
 
