@@ -79,7 +79,7 @@ def generate_detailed_ui(data,more):
         mode = st.selectbox("mode", placeholder="Choose Payment Method", options=df['Mode'].drop_duplicates().to_list(),
                             label_visibility='collapsed', index=None)
         if mode:
-            df = df.where(df['Mode'] == mode).dropna()
+            df = df.where(df['Mode'].isin([mode])).dropna()
 
     # Account No
     with nav_cols[2]:
