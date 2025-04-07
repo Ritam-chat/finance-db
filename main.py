@@ -13,7 +13,8 @@ st.set_page_config(
 
 USERS = [
     'Ritam',
-    'Riya'
+    'Riya',
+    'Ritika'
 ]
 
 
