@@ -14,7 +14,8 @@ st.set_page_config(
 USERS = [
     'Ritam',
     'Riya',
-    'Ritika'
+    'Ritika',
+    'Sakshi'
 ]
 
 
