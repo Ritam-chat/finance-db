@@ -9,7 +9,7 @@ from utils import to_float, set_cookies, save_df, check_split, concat_datas, fil
 from streamlit_ace import st_ace
 
 # Default
-DF_COLUMNS = ['Key','Account','Date','From/To','Amount','Mode','Type','Tags']
+DF_COLUMNS = ['Key','Account','Date','From/To','Amount','Mode','Type','Tags','GPS']
 MONTH_LIST = []
 TAB_LIST = ['Monthly Summary','Detailed Summary']
 CURR_MONTH, CURR_YEAR = datetime.now().month, datetime.now().year
@@ -150,6 +150,7 @@ def generate_detailed_ui(data,more):
 
     with cols[0]:
         if st.session_state['TAGS_EDITABLE']:
+            df = df.drop(columns=['GPS'])
             df['Tags'] = df['Tags'].apply(','.join)
             df['Split'] = False
             st.session_state['COL_CONFIG'] = {
@@ -170,7 +171,13 @@ def generate_detailed_ui(data,more):
                     help="Tags to identify the transaction",
                     width="medium",
 
-                )
+                ),
+                "GPS" : st.column_config.LinkColumn(
+                    "GPS",
+                    help="Location the transaction was made",
+                    width="small",
+                    display_text="hi :material/thumb_up:"
+                ),
             }
 
         # Final Filters
@@ -403,7 +410,7 @@ def generate_basic_ui(user, paymentInfo):
             for key in paymentInfo[bank][acc]:
                 trans = paymentInfo[bank][acc][key]
                 try:
-                    data.append((key, f"{bank} ({trans['account']})", trans['time'], trans['to_from'], trans['amount'],trans['mode'], trans['type'], [] if 'tags' not in trans else trans['tags']))
+                    data.append((key, f"{bank} ({trans['account']})", trans['time'], trans['to_from'], trans['amount'],trans['mode'], trans['type'], [] if 'tags' not in trans else trans['tags'], f"https://maps.google.com/?q={trans['gps']}" if ',' in trans['gps'].strip() else trans['gps']))
                 except:
                     st.write(trans)
 
