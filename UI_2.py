@@ -37,7 +37,7 @@ def generate_base_details(data):
 
 
         df['Key'] = pd.to_datetime(df['Key'])
-
+        df = df.drop(columns=['GPS'])
         df = df.where(df['Key'] <= datetime.strptime(selectedMonth,'%d-%b-%Y')).where(df['Key'] >= datetime.strptime('1'+selectedMonth[2:],'%d-%b-%Y')).dropna().sort_values('Key')
         df['Key'] =  df['Key'].apply(str)
         df['Amount'] = to_float(df['Amount'])
@@ -176,7 +176,7 @@ def generate_detailed_ui(data,more):
                     "GPS",
                     help="Location the transaction was made",
                     width="small",
-                    display_text="hi :material/thumb_up:"
+                    display_text="Loc..."
                 ),
             }
 
